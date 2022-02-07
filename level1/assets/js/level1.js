@@ -53,6 +53,7 @@ let ob = [];
 let bolhas;
 let liquido = [];
 let bubbles;
+let fase_params = resetFase_params();
 
 function die() {
     //console.log("Tile X: " + parseInt(player.x / 16) + "\nTile Y: " + parseInt(player.y / 16));
@@ -62,14 +63,37 @@ function die() {
 
     let obstaculos = ["baloes", "airship"];
     if (px > 370 && px < 670) {
+        fase_params["loc_morte"] = { obstaculo: obstaculos[0], x: px, y: py };
         ob.push(obstaculos[0]);
     } else if (px > 1000 && px < 1745) {
+        fase_params["loc_morte"] = { obstaculo: obstaculos[1], x: px, y: py };
         ob.push(obstaculos[1]);
     }
 
     player.x = ckpx;
     player.y = ckpy;
 
+    $.ajax({
+        method: "POST",
+        url: "https://apichemical.quimicotgames.com/aluno/log",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokenAluno}`,
+        },
+        data: JSON.stringify({
+            turma_fase: turmaFase, //
+            detalhes: `Morte: ${1+mortes}`,
+            tipo: "Morte",
+            comeco: hrInicio, //Y-m-d H:i:s
+            fim: getHoraFinal(), //Y-m-d H:i:s
+            /*objeto: JSON.stringify({
+                obstaculos: ob,
+                coordenadas: vMortes,
+            }),*/
+            objeto: JSON.stringify(fase_params)
+        }),
+    });
+    
     if (mortes == 0) {
         hp[0].play("death");
         vMortes[0] = [px, py];
@@ -79,20 +103,6 @@ function die() {
     } else if (mortes == 2) {
         hp[2].play("death");
         vMortes[2] = [px, py];
-
-        //formatando hora da morte
-        hrFim = new Date();
-        let h = hrFim.toISOString();
-        let hh = [];
-        hh = h.split("T");
-        let hh2 = [];
-        hh2 = hh[1].split(".");
-        h = hh[0] + " " + hh2[0];
-        // h = h.replace("-", "/");
-        // h = h.replace("-", "/");
-        hrFim = h;
-
-        console.log("h': " + hrFim);
         //
             $.ajax({
                 method: "POST",
@@ -103,14 +113,15 @@ function die() {
                 },
                 data: JSON.stringify({
                     turma_fase: turmaFase, //
-                    detalhes: "morreu nas coordenadas x: " + px + ", y: " + py,
-                    tipo: "morte",
+                    detalhes: `Fim de jogo: Derrota`,
+                    tipo: "Derrota",
                     comeco: hrInicio, //Y-m-d H:i:s
-                    fim: hrFim, //Y-m-d H:i:s
-                    objeto: JSON.stringify({
+                    fim: getHoraFinal(), //Y-m-d H:i:s
+                    /*objeto: JSON.stringify({
                         obstaculos: ob,
                         coordenadas: vMortes,
-                    }),
+                    }),*/
+                    objeto: JSON.stringify(fase_params)
                 }),
             })
             .done(function() {
@@ -128,6 +139,7 @@ function die() {
     }
 
     mortes++;
+    fase_params = resetFase_params(mortes);
     player.setVelocityY(0);
 
     var b2 = baloes2.getChildren();
@@ -155,6 +167,22 @@ function resetAirship() {
 }
 
 function won() {
+    $.ajax({
+        method: "POST",
+        url: "https://apichemical.quimicotgames.com/aluno/log",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokenAluno}`,
+        },
+        data: JSON.stringify({
+            turma_fase: turmaFase, //
+            detalhes: `Fim de jogo: Vitória`,
+            tipo: "Vitória",
+            comeco: hrInicio, //Y-m-d H:i:s
+            fim: getHoraFinal(), //Y-m-d H:i:s
+            objeto: JSON.stringify(fase_params)
+        }),
+    });
     canMove = false;
     //console.log('ganhou');
     win = true;
@@ -1002,6 +1030,7 @@ var createTextBox = function(scene, x, y, config) {
                 if (this.isLastPage) {
                     canMove = true;
                     activebox = 0;
+                    fase_params["LeuPlaca"] = true;
                     this.destroy();
                 }
 
@@ -1071,7 +1100,7 @@ var collectCoin = function(player, coin) {
     if (activeSound == 1) {
         coinSound.play();
     }
-
+    fase_params["Coins"].push({ x: coin.x, y: coin.y });
     coin.destroy(coin.x, coin.y);
     scoreValue += 10;
 };
@@ -1079,3 +1108,29 @@ var collectCoin = function(player, coin) {
 var bubbleBounce = function(bolha) {
     bolha.setVelocityY(-150);
 };
+
+function resetFase_params(mortes) {
+    return {
+        "LeuPlaca": false,
+        "qtd_mortes": mortes ? mortes : 0,
+        "loc_morte": [],
+        "Coins": []
+    }
+}
+
+function getHoraFinal() {
+    //formatando hora da morte
+    let hrFim = new Date();
+    let h = hrFim.toISOString();
+    let hh = [];
+    hh = h.split("T");
+    let hh2 = [];
+    hh2 = hh[1].split(".");
+    h = hh[0] + " " + hh2[0];
+    // h = h.replace("-", "/");
+    // h = h.replace("-", "/");
+    hrFim = h;
+
+    console.log("h': " + hrFim);
+    return hrFim;
+}
