@@ -23,6 +23,8 @@ let content = `O elemento Hélio foi descoberto por Pierre - Jules - César Jans
 let coin, coins, coinSound, activeSound = true;
 let scoreValue = 0,
     obstaculo = [];
+let fase_params = resetFase_params();
+
 
 class Game extends Phaser.Scene {
     constructor() {
@@ -445,7 +447,7 @@ class Game extends Phaser.Scene {
                         },
                         data: JSON.stringify({
                             turma_fase: turmaFase, //
-                            detalhes: "Concluiu a fase " + turmaFase,
+                            detalhes: "Concluiu a fase",
                             tipo: "fim da fase",
                             comeco: hrInicio, //Y-m-d H:i:s
                             fim: hrFim, //Y-m-d H:i:s
@@ -823,10 +825,11 @@ var createTextBox = function(scene, x, y, config) {
                 if (this.isLastPage) {
                     canMove = true;
                     activeBox = 0;
+                    fase_params["LeuPlaca"] = true;
                     console.log("lastPage")
                     this.destroy();
                 }
-
+                
                 var icon = this.getElement("action").setVisible(true);
                 this.resetChildVisibleState(icon);
                 icon.y -= 30;
@@ -893,7 +896,7 @@ var collectCoin = function(player, coin) {
     if (activeSound) {
         coinSound.play();
     }
-
+    fase_params["Coins"].push({ x: coin.x, y: coin.y });
     coin.destroy(coin.x, coin.y);
     scoreValue += 10;
 };
@@ -968,4 +971,13 @@ function morreu() {
     }
     mortes++
     danoQueda = false;
+    fase_params = resetFase_params(mortes);
+}
+
+function resetFase_params(mortes) {
+    return {
+        "LeuPlaca": false,
+        "mortes": mortes ? mortes : 0,
+        "Coins": []
+    }
 }
